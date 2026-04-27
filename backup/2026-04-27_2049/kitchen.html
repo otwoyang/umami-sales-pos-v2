@@ -39,7 +39,6 @@
     <main class="kitchen-container">
       <div class="kitchen-header">
         <h1 class="kitchen-title">👨‍🍳 Kitchen Display</h1>
-        <button class="clear-all-btn" onclick="clearAllOrders()">✓ Clear All</button>
         <div class="kitchen-stats">
           <div class="stat-item pending">
             <div class="stat-value" id="pendingCount">0</div>
@@ -337,48 +336,6 @@
         showError('Failed to update order status');
         // Remove from syncing set on error
         syncingOrders.delete(orderId);
-        await renderKitchenOrders();
-      }
-    }
-
-    // Clear all pending and cooking orders
-    async function clearAllOrders() {
-      if (!confirm('Mark all pending and cooking orders as completed?')) {
-        return;
-      }
-
-      const orders = await SHEETS.getTodayOrders();
-      const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
-
-      if (activeOrders.length === 0) {
-        return;
-      }
-
-      // Add all to syncing set
-      activeOrders.forEach(order => syncingOrders.add(order.id));
-      renderKitchenOrders();
-
-      // Update all orders in parallel
-      try {
-        await Promise.all(activeOrders.map(order => 
-          SHEETS.updateOrderStatus(order.id, 'completed')
-        ));
-
-        // Remove from syncing set
-        activeOrders.forEach(order => syncingOrders.delete(order.id));
-
-        // Refresh display
-        await renderKitchenOrders();
-        updateKitchenStats();
-
-        // Notify parent (split view) to refresh
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ action: 'refreshOrders' }, '*');
-        }
-      } catch (error) {
-        console.error('[KITCHEN] Failed to clear orders:', error);
-        showError('Failed to clear orders');
-        activeOrders.forEach(order => syncingOrders.delete(order.id));
         await renderKitchenOrders();
       }
     }
