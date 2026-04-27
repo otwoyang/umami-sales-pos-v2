@@ -36,7 +36,7 @@ const SHEETS = {
 
   // Get default Web App URL
   getDefaultWebAppUrl() {
-    return 'https://script.google.com/macros/s/AKfycbxtO4If_5ROkVjZ-6jCZUj17L_CozZpL6QvrWNVlyfWhXkLDSE5thVWCcHjfCpefvxL/exec';
+    return 'https://script.google.com/macros/s/AKfycbzC_qFzTXZoxxziJF6qcUOIWq1IyPRB9LTotjcP5Go7cS3ZxG_r0pgi8dC880CzhTn4/exec';
   },
 
   // Generate order number: YYYYMMDDHHMMSS
