@@ -98,47 +98,17 @@ const SHEETS = {
 
   // Products are read-only from Google Sheets, no save function
 
-  // JSONP helper function
-  jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-      const script = document.createElement('script');
-      
-      window[callbackName] = function(data) {
-        delete window[callbackName];
-        document.body.removeChild(script);
-        resolve(data);
-      };
-      
-      script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-      script.onerror = function() {
-        delete window[callbackName];
-        document.body.removeChild(script);
-        reject(new Error('JSONP failed'));
-      };
-      
-      document.body.appendChild(script);
-      
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        if (window[callbackName]) {
-          delete window[callbackName];
-          if (script.parentNode) document.body.removeChild(script);
-          reject(new Error('JSONP timeout'));
-        }
-      }, 10000);
-    });
-  },
-
   // Load products from Google Sheets
   async loadProductsFromSheets() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) return null;
 
     try {
+      // Remove /exec if present, then add it back with query param
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getProducts';
-      const data = await this.jsonp(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success && data.products && data.products.length > 0) {
         return data.products;
       }
@@ -206,17 +176,15 @@ const SHEETS = {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const today = new Date().toISOString().split('T')[0];
       const url = baseUrl + '/exec?action=getOrders&date=' + today;
-      const data = await this.jsonp(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success && data.orders) {
         // Convert string dates back to timestamps for compatibility
-        const orders = data.orders.map(order => ({
+        return data.orders.map(order => ({
           ...order,
           createdAt: new Date(order.createdAt).getTime(),
           completedAt: order.completedAt ? new Date(order.completedAt).getTime() : null
         }));
-        // Update localStorage to match Sheets (prevents deleted orders from reappearing)
-        this.updateLocalOrdersFromSheets(orders);
-        return orders;
       }
     } catch (error) {
       console.error('[SHEETS] Failed to get today orders:', error);
@@ -231,48 +199,20 @@ const SHEETS = {
     });
   },
 
-  // Update localStorage orders from Sheets data (removes deleted orders)
-  updateLocalOrdersFromSheets(sheetsOrders) {
-    try {
-      const allOrders = this.getOrders();
-      const today = new Date().toDateString();
-      
-      // Keep non-today orders unchanged
-      const nonTodayOrders = allOrders.filter(order => {
-        const orderDate = new Date(order.createdAt).toDateString();
-        return orderDate !== today;
-      });
-      
-      // Replace today's orders with Sheets data
-      const updatedOrders = [...nonTodayOrders, ...sheetsOrders];
-      
-      // Only update if data actually changed (compare order IDs)
-      const currentIds = allOrders.filter(o => new Date(o.createdAt).toDateString() === today).map(o => o.id).sort().join(',');
-      const newIds = sheetsOrders.map(o => o.id).sort().join(',');
-      
-      if (currentIds !== newIds) {
-        localStorage.setItem('umamiOrders', JSON.stringify(updatedOrders));
-        console.log('[SHEETS] Updated localStorage from Sheets:', sheetsOrders.length, 'orders');
-      }
-    } catch (e) {
-      console.error('[SHEETS] Failed to update localStorage:', e);
-    }
-  },
-
   // Get today's total sales (from Google Sheets API)
   async getTodaySales() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) {
       console.log('[SHEETS] No Web App URL, falling back to localStorage');
-      const orders = await this.getTodayOrders();
-      if (!Array.isArray(orders)) return 0;
+      const orders = this.getTodayOrders();
       return orders.reduce((sum, order) => sum + (order.total || 0), 0);
     }
 
     try {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getTodaySummary';
-      const data = await this.jsonp(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success) {
         return data.todaySales || 0;
       }
@@ -281,8 +221,7 @@ const SHEETS = {
     }
     
     // Fallback to localStorage
-    const orders = await this.getTodayOrders();
-    if (!Array.isArray(orders)) return 0;
+    const orders = this.getTodayOrders();
     return orders.reduce((sum, order) => sum + (order.total || 0), 0);
   },
 
@@ -328,35 +267,7 @@ const SHEETS = {
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
       orders.splice(index, 1);
-      // Save to localStorage first
-      localStorage.setItem('umamiOrders', JSON.stringify(orders));
-      // Sync deletion to Sheets
-      await this.syncDeleteToSheets(orderId);
-    }
-  },
-
-  // Sync deletion to Google Sheets
-  async syncDeleteToSheets(orderId) {
-    const webAppUrl = this.getWebAppUrl();
-    if (!webAppUrl) {
-      console.log('[SHEETS] No Web App URL configured, skipping delete sync');
-      return;
-    }
-
-    try {
-      await fetch(webAppUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'deleteOrder',
-          orderId: orderId,
-          timestamp: Date.now()
-        })
-      });
-      console.log('[SHEETS] Order deletion synced:', orderId);
-    } catch (error) {
-      console.error('[SHEETS] Delete sync failed:', error);
+      await this.saveOrders(orders);
     }
   },
 
@@ -930,7 +841,7 @@ function viewReceipt(orderId) {
 
 async function deleteHistoryOrder(orderId) {
   if (!confirm('Delete this order?')) return;
-  await SHEETS.deleteOrder(orderId);
+  SHEETS.deleteOrder(orderId);
   showHistory(); // Refresh list
   await updateTodaySales();
   

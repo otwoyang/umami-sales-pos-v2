@@ -1159,27 +1159,6 @@ body {
   color: var(--text-primary);
 }
 
-.clear-all-btn {
-  padding: var(--space-xs) var(--space-md);
-  background: var(--accent-green);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: white;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter 0.2s;
-}
-
-.clear-all-btn:hover {
-  filter: brightness(1.1);
-}
-
-.clear-all-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .kitchen-stats {
   display: flex;
   gap: var(--space-lg);

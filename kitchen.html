@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#f8fafc">
   <title>Umami POS - Kitchen</title>
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/styles.css?v=202604272142">
+  <link rel="stylesheet" href="/styles.css">
   <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body data-page="kitchen">
@@ -39,7 +39,6 @@
     <main class="kitchen-container">
       <div class="kitchen-header">
         <h1 class="kitchen-title">👨‍🍳 Kitchen Display</h1>
-        <button class="clear-all-btn" onclick="clearAllOrders()">✓ Clear All</button>
         <div class="kitchen-stats">
           <div class="stat-item pending">
             <div class="stat-value" id="pendingCount">0</div>
@@ -87,7 +86,7 @@
 
   <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="/app.js?v=202604272142"></script>
+  <script src="/app.js?v=202604272003"></script>
 
   <script>
     // Kitchen page specific initialization
@@ -143,15 +142,12 @@
       const orders = await SHEETS.getTodayOrders();
       
       // Merge pending orders from message (immediate display before Sheets sync)
-      // Only add orders that don't exist in Sheets, and respect Sheets status
       if (pendingOrdersFromMessage.length > 0) {
         pendingOrdersFromMessage.forEach(msgOrder => {
-          const existingOrder = orders.find(o => o.id === msgOrder.id);
-          if (!existingOrder) {
-            // Order not in Sheets yet, add from message
+          const exists = orders.some(o => o.id === msgOrder.id);
+          if (!exists) {
             orders.push(msgOrder);
           }
-          // If exists in Sheets, use Sheets status (don't override)
         });
         // Clear after merging
         pendingOrdersFromMessage = [];
@@ -184,7 +180,11 @@
         completed: filteredOrders.filter(o => o.status === 'completed')
       };
 
-
+      // Add placeholder if order is being submitted (add to end of pending list)
+      // Only show placeholder if we don't have the real order from message yet
+      if (isSubmittingOrder && kitchenFilter === 'active' && pendingOrdersFromMessage.length === 0) {
+        grouped.pending.push({ isPlaceholder: true });
+      }
 
       // Sort: cooking first, then pending, then completed
       const statusOrder = ['cooking', 'pending', 'completed'];
@@ -336,48 +336,6 @@
         showError('Failed to update order status');
         // Remove from syncing set on error
         syncingOrders.delete(orderId);
-        await renderKitchenOrders();
-      }
-    }
-
-    // Clear all pending and cooking orders
-    async function clearAllOrders() {
-      if (!confirm('Mark all pending and cooking orders as completed?')) {
-        return;
-      }
-
-      const orders = await SHEETS.getTodayOrders();
-      const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
-
-      if (activeOrders.length === 0) {
-        return;
-      }
-
-      // Add all to syncing set
-      activeOrders.forEach(order => syncingOrders.add(order.id));
-      renderKitchenOrders();
-
-      // Update all orders in parallel
-      try {
-        await Promise.all(activeOrders.map(order => 
-          SHEETS.updateOrderStatus(order.id, 'completed')
-        ));
-
-        // Remove from syncing set
-        activeOrders.forEach(order => syncingOrders.delete(order.id));
-
-        // Refresh display
-        await renderKitchenOrders();
-        updateKitchenStats();
-
-        // Notify parent (split view) to refresh
-        if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ action: 'refreshOrders' }, '*');
-        }
-      } catch (error) {
-        console.error('[KITCHEN] Failed to clear orders:', error);
-        showError('Failed to clear orders');
-        activeOrders.forEach(order => syncingOrders.delete(order.id));
         await renderKitchenOrders();
       }
     }
