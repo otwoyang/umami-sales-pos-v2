@@ -602,9 +602,9 @@ async function completeOrder(paymentMethod) {
     clearOrder();
     await updateTodaySales();
 
-    // Notify kitchen order is ready
+    // Notify kitchen order is ready (with order data for immediate display)
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ action: 'orderSubmitted' }, '*');
+      window.parent.postMessage({ action: 'orderSubmitted', order: order }, '*');
     }
   } catch (error) {
     console.error('[ORDER] Failed to complete order:', error);

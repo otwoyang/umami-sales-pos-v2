@@ -95,6 +95,7 @@
     let kitchenTimerInterval = null;
     let isSubmittingOrder = false;
     let syncingOrders = new Set(); // Track orders being synced
+    let pendingOrdersFromMessage = []; // Orders received via message before Sheets sync
 
     // Override init function for kitchen page
     window.initKitchenPage = async function() {
@@ -139,6 +140,19 @@
     // Render kitchen orders
     async function renderKitchenOrders() {
       const orders = await SHEETS.getTodayOrders();
+      
+      // Merge pending orders from message (immediate display before Sheets sync)
+      if (pendingOrdersFromMessage.length > 0) {
+        pendingOrdersFromMessage.forEach(msgOrder => {
+          const exists = orders.some(o => o.id === msgOrder.id);
+          if (!exists) {
+            orders.push(msgOrder);
+          }
+        });
+        // Clear after merging
+        pendingOrdersFromMessage = [];
+      }
+      
       const grid = document.getElementById('ordersGrid');
       
       if (!orders || orders.length === 0) {
@@ -401,14 +415,14 @@
             renderKitchenOrders();
             break;
           case 'orderSubmitted':
-            console.log('[KITCHEN] Order submitted, will hide placeholder after delay');
-            // Wait a bit for Sheets to sync, then refresh and hide placeholder
-            setTimeout(async () => {
-              await renderKitchenOrders();
-              isSubmittingOrder = false;
-              await renderKitchenOrders();
-              updateKitchenStats();
-            }, 800);
+            console.log('[KITCHEN] Order submitted, hiding placeholder');
+            isSubmittingOrder = false;
+            // If order data is provided, add it to pending orders immediately
+            if (event.data.order) {
+              pendingOrdersFromMessage = [event.data.order];
+            }
+            renderKitchenOrders();
+            updateKitchenStats();
             break;
         }
       }
