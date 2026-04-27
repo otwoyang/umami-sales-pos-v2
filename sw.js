@@ -3,7 +3,7 @@ const CACHE_NAME = 'umami-sales-v2';
 
 const STATIC_ASSETS = [
   '/',
-  '/split.html',
+  '/index.html',
   '/order.html',
   '/kitchen.html',
   '/styles.css',
@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
           // Fallback to cache
           return caches.match(event.request)
             .then((cached) => {
-              return cached || caches.match('/split.html');
+              return cached || caches.match('/index.html');
             });
         })
     );

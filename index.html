@@ -2,10 +2,37 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=/split.html">
   <title>Umami Sales POS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      height: 100vh;
+      display: flex;
+    }
+    .kitchen-panel {
+      flex: 1;
+      border-right: 2px solid #cbd5e1;
+      overflow: hidden;
+    }
+    .order-panel {
+      flex: 1;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-  <p>Redirecting to <a href="/split.html">Umami Sales POS</a>...</p>
+  <div class="kitchen-panel">
+    <iframe src="/kitchen.html" id="kitchenFrame"></iframe>
+  </div>
+  <div class="order-panel">
+    <iframe src="/order.html" id="orderFrame"></iframe>
+  </div>
 </body>
 </html>
