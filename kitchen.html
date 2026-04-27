@@ -94,6 +94,7 @@
     let kitchenRefreshInterval = null;
     let kitchenTimerInterval = null;
     let isSubmittingOrder = false;
+    let syncingOrders = new Set(); // Track orders being synced
 
     // Override init function for kitchen page
     window.initKitchenPage = async function() {
@@ -249,6 +250,11 @@
         `;
       }
 
+      // Check if this order is being synced
+      const isSyncing = syncingOrders.has(order.id);
+      const syncClass = isSyncing ? 'syncing' : '';
+      const syncStatusText = isSyncing ? 'SYNCING...' : order.status.toUpperCase();
+
       const items = order.items || [];
       const itemList = items.map(item => `
         <div class="order-card-item">
@@ -277,12 +283,12 @@
       }
 
       return `
-        <div class="order-card ${order.status}" data-order-id="${order.id}" data-status="${order.status}">
+        <div class="order-card ${order.status} ${syncClass}" data-order-id="${order.id}" data-status="${order.status}">
           <div class="order-card-header">
             <span class="order-card-number">#${order.orderNumber}</span>
             <span class="order-card-time">${timeStr}</span>
           </div>
-          <div class="order-card-status">${order.status.toUpperCase()}</div>
+          <div class="order-card-status">${syncStatusText}</div>
           <div class="order-card-items">
             ${itemList}
           </div>
@@ -297,17 +303,17 @@
 
     // Update order status
     async function updateOrderStatus(orderId, newStatus) {
-      const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
       const isDblClick = newStatus === 'completed';
 
-      // Add animation class
-      if (card) {
-        card.classList.add(isDblClick ? 'syncing-dblclick' : 'syncing-click');
-        card.classList.add('syncing');
-      }
+      // Add to syncing set
+      syncingOrders.add(orderId);
+      await renderKitchenOrders();
 
       try {
         await SHEETS.updateOrderStatus(orderId, newStatus);
+
+        // Remove from syncing set after successful sync
+        syncingOrders.delete(orderId);
 
         // Refresh display
         await renderKitchenOrders();
@@ -320,10 +326,9 @@
       } catch (error) {
         console.error('[KITCHEN] Failed to update order:', error);
         showError('Failed to update order status');
-        // Remove animation on error
-        if (card) {
-          card.classList.remove('syncing-click', 'syncing-dblclick', 'syncing');
-        }
+        // Remove from syncing set on error
+        syncingOrders.delete(orderId);
+        await renderKitchenOrders();
       }
     }
 
