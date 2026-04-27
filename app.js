@@ -225,8 +225,9 @@ const SHEETS = {
     return orders.reduce((sum, order) => sum + (order.total || 0), 0);
   },
 
-  // Update order status
-  updateOrderStatus(orderId, newStatus) {
+  // Update order status (local + sync to Google Sheets)
+  async updateOrderStatus(orderId, newStatus) {
+    // Update localStorage first
     const orders = this.getOrders();
     const order = orders.find(o => o.id === orderId);
     if (order) {
@@ -236,6 +237,27 @@ const SHEETS = {
       }
       this.saveOrders(orders);
     }
+    
+    // Sync to Google Sheets
+    const webAppUrl = this.getWebAppUrl();
+    if (webAppUrl) {
+      try {
+        await fetch(webAppUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'updateOrderStatus',
+            orderId: orderId,
+            newStatus: newStatus
+          })
+        });
+        console.log('[SHEETS] Order status synced:', orderId, '->', newStatus);
+      } catch (error) {
+        console.error('[SHEETS] Failed to sync status:', error);
+      }
+    }
+    
     return order;
   },
 
