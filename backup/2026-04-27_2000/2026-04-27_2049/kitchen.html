@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#f8fafc">
+  <title>Umami POS - Kitchen</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+</head>
+<body data-page="kitchen">
+
+  <!-- Error Display -->
+  <div id="errorDisplay" class="error-display" style="display:none; position:fixed; top:0; left:0; right:0; background:#ef4444; color:white; padding:10px; text-align:center; z-index:9999; font-size:14px;"></div>
+
+  <!-- Offline Banner -->
+  <div id="offlineBanner" class="offline-banner">📡 Offline - Data will sync when connected</div>
+
+  <!-- Install Prompt -->
+  <div id="installPrompt" class="install-prompt">
+    <span>📱 Install App</span>
+    <button id="installBtn">Install</button>
+    <button id="dismissInstall">✕</button>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">🍣 Umami POS</h1>
+      <nav class="header-nav">
+        <button class="nav-btn" onclick="showHistory()">📜 History</button>
+      </nav>
+    </header>
+
+    <!-- Kitchen Content -->
+    <main class="kitchen-container">
+      <div class="kitchen-header">
+        <h1 class="kitchen-title">👨‍🍳 Kitchen Display</h1>
+        <div class="kitchen-stats">
+          <div class="stat-item pending">
+            <div class="stat-value" id="pendingCount">0</div>
+            <div class="stat-label">Waiting</div>
+          </div>
+          <div class="stat-item cooking">
+            <div class="stat-value" id="cookingCount">0</div>
+            <div class="stat-label">Cooking</div>
+          </div>
+          <div class="stat-item completed">
+            <div class="stat-value" id="completedCount">0</div>
+            <div class="stat-label">Done</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kitchen-filters">
+        <button class="filter-btn active" data-filter="active" onclick="setKitchenFilter('active')">⏳🔥 Active</button>
+        <button class="filter-btn" data-filter="completed" onclick="setKitchenFilter('completed')">✓ Done</button>
+      </div>
+
+      <div id="ordersGrid" class="kitchen-grid">
+        <!-- Orders will be rendered here -->
+      </div>
+    </main>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal-overlay" onclick="closeAllModals()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="modal-title">📜 Today's Orders</h2>
+          <button class="modal-close" onclick="closeHistory()">✕</button>
+        </div>
+        <div id="historyList" class="modal-body">
+          <!-- History items will be rendered here -->
+        </div>
+        <div class="modal-footer">
+          <button class="export-btn" onclick="exportTodayOrders()">
+            📥 Export Excel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="/app.js?v=202604272003"></script>
+
+  <script>
+    // Kitchen page specific initialization
+    let kitchenFilter = 'all';
+    let kitchenRefreshInterval = null;
+    let kitchenTimerInterval = null;
+    let isSubmittingOrder = false;
+    let syncingOrders = new Set(); // Track orders being synced
+    let pendingOrdersFromMessage = []; // Orders received via message before Sheets sync
+
+    // Override init function for kitchen page
+    window.initKitchenPage = async function() {
+      console.log('[KITCHEN] Initializing...');
+      
+      // Clear existing intervals
+      if (kitchenRefreshInterval) clearInterval(kitchenRefreshInterval);
+      if (kitchenTimerInterval) clearInterval(kitchenTimerInterval);
+
+      // Initial render
+      await renderKitchenOrders();
+      updateKitchenStats();
+
+      // Start auto-refresh every 5 seconds
+      kitchenRefreshInterval = setInterval(async () => {
+        await renderKitchenOrders();
+        updateKitchenStats();
+      }, 5000);
+
+      // Update timers every second
+      kitchenTimerInterval = setInterval(updateOrderTimers, 1000);
+    };
+
+    // Set filter
+    window.setKitchenFilter = function(filter) {
+      kitchenFilter = filter;
+
+      // Update button states
+      document.querySelectorAll('.kitchen-filters .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === filter) {
+          btn.classList.add('active');
+        }
+      });
+
+      renderKitchenOrders();
+    };
+
+    // Initialize filter on load
+    kitchenFilter = 'active';
+
+    // Render kitchen orders
+    async function renderKitchenOrders() {
+      const orders = await SHEETS.getTodayOrders();
+      
+      // Merge pending orders from message (immediate display before Sheets sync)
+      if (pendingOrdersFromMessage.length > 0) {
+        pendingOrdersFromMessage.forEach(msgOrder => {
+          const exists = orders.some(o => o.id === msgOrder.id);
+          if (!exists) {
+            orders.push(msgOrder);
+          }
+        });
+        // Clear after merging
+        pendingOrdersFromMessage = [];
+      }
+      
+      const grid = document.getElementById('ordersGrid');
+      
+      if (!orders || orders.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-orders">
+            <div class="empty-orders-icon">🍽️</div>
+            <div>No orders yet</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Filter orders
+      let filteredOrders = orders;
+      if (kitchenFilter === 'active') {
+        filteredOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
+      } else if (kitchenFilter === 'completed') {
+        filteredOrders = orders.filter(o => o.status === 'completed');
+      }
+
+      // Group by status
+      const grouped = {
+        cooking: filteredOrders.filter(o => o.status === 'cooking'),
+        pending: filteredOrders.filter(o => o.status === 'pending'),
+        completed: filteredOrders.filter(o => o.status === 'completed')
+      };
+
+      // Add placeholder if order is being submitted (add to end of pending list)
+      // Only show placeholder if we don't have the real order from message yet
+      if (isSubmittingOrder && kitchenFilter === 'active' && pendingOrdersFromMessage.length === 0) {
+        grouped.pending.push({ isPlaceholder: true });
+      }
+
+      // Sort: cooking first, then pending, then completed
+      const statusOrder = ['cooking', 'pending', 'completed'];
+      
+      let html = '';
+      
+      for (const status of statusOrder) {
+        const statusOrders = grouped[status];
+        if (statusOrders.length === 0) continue;
+
+        const statusLabels = {
+          cooking: '🔥 Cooking',
+          pending: '⏳ Waiting',
+          completed: '✓ Done'
+        };
+
+        html += `
+          <div class="kitchen-status-row" data-status="${status}">
+            <div class="kitchen-status-label">${statusLabels[status]} (${statusOrders.length})</div>
+            <div class="kitchen-status-cards">
+              ${statusOrders.map(order => renderOrderCard(order)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html || `
+        <div class="empty-orders">
+          <div class="empty-orders-icon">🍽️</div>
+          <div>No ${kitchenFilter} orders</div>
+        </div>
+      `;
+
+      // Add click handlers
+      document.querySelectorAll('.order-card').forEach(card => {
+        const orderId = card.dataset.orderId;
+        const status = card.dataset.status;
+
+        // Double click to advance status
+        card.addEventListener('dblclick', (e) => {
+          if (status === 'pending') {
+            updateOrderStatus(orderId, 'cooking');
+          } else if (status === 'cooking') {
+            updateOrderStatus(orderId, 'completed');
+          }
+        });
+      });
+    }
+
+    // Render single order card
+    function renderOrderCard(order) {
+      // Render placeholder card for submitting order
+      if (order.isPlaceholder) {
+        return `
+          <div class="order-card placeholder">
+            <div class="order-card-header">
+              <span class="order-card-number">#...</span>
+              <span class="order-card-time">⏳</span>
+            </div>
+            <div class="order-card-status">SYNCING</div>
+            <div class="order-card-items">
+              <div class="order-card-item">
+                <span class="order-card-item-name">New order incoming...</span>
+              </div>
+            </div>
+            <div class="order-card-footer">
+              <div class="order-timer">⟳</div>
+              <div class="order-card-total">...</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Check if this order is being synced
+      const isSyncing = syncingOrders.has(order.id);
+      const syncClass = isSyncing ? 'syncing' : '';
+      const syncStatusText = isSyncing ? 'SYNCING...' : order.status.toUpperCase();
+
+      const items = order.items || [];
+      const itemList = items.map(item => `
+        <div class="order-card-item">
+          <span class="order-card-item-qty">${item.qty}x</span>
+          <span class="order-card-item-name">${item.name}</span>
+        </div>
+      `).join('');
+
+      const createdAt = new Date(order.createdAt);
+      const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      
+      // Calculate elapsed time
+      const elapsed = Math.floor((Date.now() - order.createdAt) / 1000);
+      const elapsedMin = Math.floor(elapsed / 60);
+      const elapsedSec = elapsed % 60;
+      const elapsedStr = `${elapsedMin}:${elapsedSec.toString().padStart(2, '0')}`;
+
+      // Promise time display
+      let promiseDisplay = '';
+      if (order.promiseTime && order.promiseTime > 0) {
+        const promiseEnd = order.createdAt + (order.promiseTime * 60 * 1000);
+        const remaining = Math.max(0, Math.floor((promiseEnd - Date.now()) / 1000));
+        const remMin = Math.floor(remaining / 60);
+        const remSec = remaining % 60;
+        promiseDisplay = `<div class="order-remaining">⏰ ${remMin}:${remSec.toString().padStart(2, '0')}</div>`;
+      }
+
+      return `
+        <div class="order-card ${order.status} ${syncClass}" data-order-id="${order.id}" data-status="${order.status}">
+          <div class="order-card-header">
+            <span class="order-card-number">#${order.orderNumber}</span>
+            <span class="order-card-time">${timeStr}</span>
+          </div>
+          <div class="order-card-status">${syncStatusText}</div>
+          <div class="order-card-items">
+            ${itemList}
+          </div>
+          <div class="order-card-footer">
+            <div class="order-timer">⏱️ ${elapsedStr}</div>
+            ${promiseDisplay}
+            <div class="order-card-total">€${order.total.toFixed(2)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Update order status
+    async function updateOrderStatus(orderId, newStatus) {
+      const isDblClick = newStatus === 'completed';
+
+      // Add to syncing set and render immediately (non-blocking)
+      syncingOrders.add(orderId);
+      renderKitchenOrders();
+
+      try {
+        await SHEETS.updateOrderStatus(orderId, newStatus);
+
+        // Remove from syncing set after successful sync
+        syncingOrders.delete(orderId);
+
+        // Refresh display
+        renderKitchenOrders();
+        updateKitchenStats();
+
+        // Notify parent (split view) to refresh
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ action: 'refreshOrders' }, '*');
+        }
+      } catch (error) {
+        console.error('[KITCHEN] Failed to update order:', error);
+        showError('Failed to update order status');
+        // Remove from syncing set on error
+        syncingOrders.delete(orderId);
+        await renderKitchenOrders();
+      }
+    }
+
+    // Update stats
+    async function updateKitchenStats() {
+      const orders = await SHEETS.getTodayOrders();
+      
+      const counts = {
+        pending: orders.filter(o => o.status === 'pending').length,
+        cooking: orders.filter(o => o.status === 'cooking').length,
+        completed: orders.filter(o => o.status === 'completed').length
+      };
+
+      document.getElementById('pendingCount').textContent = counts.pending;
+      document.getElementById('cookingCount').textContent = counts.cooking;
+      document.getElementById('completedCount').textContent = counts.completed;
+    }
+
+    // Update order timers
+    function updateOrderTimers() {
+      document.querySelectorAll('.order-card').forEach(card => {
+        const timerEl = card.querySelector('.order-timer');
+        const remainingEl = card.querySelector('.order-remaining');
+        
+        if (timerEl) {
+          const currentText = timerEl.textContent;
+          const match = currentText.match(/(\d+):(\d+)/);
+          if (match) {
+            let min = parseInt(match[1]);
+            let sec = parseInt(match[2]);
+            sec++;
+            if (sec >= 60) {
+              sec = 0;
+              min++;
+            }
+            timerEl.textContent = `⏱️ ${min}:${sec.toString().padStart(2, '0')}`;
+          }
+        }
+
+        // Update promise countdown
+        if (remainingEl) {
+          const match = remainingEl.textContent.match(/(\d+):(\d+)/);
+          if (match) {
+            let min = parseInt(match[1]);
+            let sec = parseInt(match[2]);
+            if (min > 0 || sec > 0) {
+              if (sec > 0) {
+                sec--;
+              } else if (min > 0) {
+                min--;
+                sec = 59;
+              }
+              remainingEl.textContent = `⏰ ${min}:${sec.toString().padStart(2, '0')}`;
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize kitchen page when DOM is ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initKitchenPage();
+    });
+
+    // Listen for messages from parent
+    window.addEventListener('message', function(event) {
+      console.log('[KITCHEN] Received message:', event.data);
+      if (event.data && event.data.action) {
+        switch(event.data.action) {
+          case 'refreshOrders':
+            renderKitchenOrders();
+            updateKitchenStats();
+            break;
+          case 'orderSubmitting':
+            console.log('[KITCHEN] Order submitting, showing placeholder');
+            isSubmittingOrder = true;
+            (async () => {
+              await renderKitchenOrders();
+            })();
+            break;
+          case 'orderSubmitted':
+            console.log('[KITCHEN] Order submitted, hiding placeholder');
+            // First, save the order data (before hiding placeholder)
+            if (event.data.order) {
+              pendingOrdersFromMessage = [event.data.order];
+            }
+            // Then hide placeholder
+            isSubmittingOrder = false;
+            // Finally render - placeholder will be gone, real order will show
+            (async () => {
+              await renderKitchenOrders();
+              updateKitchenStats();
+            })();
+            break;
+        }
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (kitchenRefreshInterval) clearInterval(kitchenRefreshInterval);
+      if (kitchenTimerInterval) clearInterval(kitchenTimerInterval);
+    });
+  </script>
+</body>
+</html>
