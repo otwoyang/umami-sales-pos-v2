@@ -164,7 +164,6 @@ body {
   background: var(--bg-secondary);
   height: 100%;
   max-height: 100%;
-  position: relative;
 }
 
 /* ==================== ORDER HEADER ==================== */
@@ -311,51 +310,6 @@ body {
   font-size: 8vmin;
   margin-bottom: var(--space-md);
   opacity: 0.5;
-}
-
-/* ==================== SYNCING OVERLAY ==================== */
-.syncing-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(248, 250, 252, 0.95);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  border-radius: var(--radius-lg);
-}
-
-.syncing-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-xl);
-}
-
-.syncing-spinner {
-  font-size: 6vmin;
-  animation: spin 1.5s linear infinite;
-  color: var(--accent-blue);
-}
-
-.syncing-text {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.syncing-subtext {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* ==================== ORDER SUMMARY ==================== */
@@ -1288,7 +1242,7 @@ body {
 .order-card.placeholder {
   border-left: 1vmin solid var(--accent-orange);
   opacity: 0.5;
-  animation: placeholder-pulse 0.8s ease-in-out infinite;
+  animation: placeholder-pulse 1.5s ease-in-out infinite;
   cursor: default;
 }
 
@@ -1299,10 +1253,10 @@ body {
 
 @keyframes placeholder-pulse {
   0%, 100% {
-    opacity: 0.3;
+    opacity: 0.4;
   }
   50% {
-    opacity: 0.8;
+    opacity: 0.7;
   }
 }
 
@@ -1397,7 +1351,7 @@ body {
   font-weight: 700;
   color: #e53935;
   font-family: monospace;
-  animation: redGlow 0.8s ease-in-out infinite alternate;
+  animation: redGlow 1.5s ease-in-out infinite alternate;
 }
 
 @keyframes redGlow {
@@ -1853,7 +1807,7 @@ body {
   transform: translate(-50%, -50%);
   font-size: 5vmin;
   color: var(--accent-blue);
-  animation: spin 0.4s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
 .order-card.syncing .order-card-status::after {

@@ -86,7 +86,7 @@
 
   <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="/app.js?v=202604272003"></script>
+  <script src="/app.js?v=20260427g"></script>
 
   <script>
     // Kitchen page specific initialization
@@ -94,7 +94,6 @@
     let kitchenRefreshInterval = null;
     let kitchenTimerInterval = null;
     let isSubmittingOrder = false;
-    let syncingOrders = new Set(); // Track orders being synced
 
     // Override init function for kitchen page
     window.initKitchenPage = async function() {
@@ -207,12 +206,19 @@
       document.querySelectorAll('.order-card').forEach(card => {
         const orderId = card.dataset.orderId;
         const status = card.dataset.status;
-
-        // Double click to advance status
-        card.addEventListener('dblclick', (e) => {
+        
+        // Single click: pending -> cooking
+        card.addEventListener('click', (e) => {
           if (status === 'pending') {
             updateOrderStatus(orderId, 'cooking');
           } else if (status === 'cooking') {
+            // Double click handled separately
+          }
+        });
+
+        // Double click: cooking -> completed
+        card.addEventListener('dblclick', (e) => {
+          if (status === 'cooking') {
             updateOrderStatus(orderId, 'completed');
           }
         });
@@ -243,11 +249,6 @@
         `;
       }
 
-      // Check if this order is being synced
-      const isSyncing = syncingOrders.has(order.id);
-      const syncClass = isSyncing ? 'syncing' : '';
-      const syncStatusText = isSyncing ? 'SYNCING...' : order.status.toUpperCase();
-
       const items = order.items || [];
       const itemList = items.map(item => `
         <div class="order-card-item">
@@ -276,12 +277,12 @@
       }
 
       return `
-        <div class="order-card ${order.status} ${syncClass}" data-order-id="${order.id}" data-status="${order.status}">
+        <div class="order-card ${order.status}" data-order-id="${order.id}" data-status="${order.status}">
           <div class="order-card-header">
             <span class="order-card-number">#${order.orderNumber}</span>
             <span class="order-card-time">${timeStr}</span>
           </div>
-          <div class="order-card-status">${syncStatusText}</div>
+          <div class="order-card-status">${order.status.toUpperCase()}</div>
           <div class="order-card-items">
             ${itemList}
           </div>
@@ -296,20 +297,20 @@
 
     // Update order status
     async function updateOrderStatus(orderId, newStatus) {
+      const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
       const isDblClick = newStatus === 'completed';
 
-      // Add to syncing set and render immediately (non-blocking)
-      syncingOrders.add(orderId);
-      renderKitchenOrders();
+      // Add animation class
+      if (card) {
+        card.classList.add(isDblClick ? 'syncing-dblclick' : 'syncing-click');
+        card.classList.add('syncing');
+      }
 
       try {
         await SHEETS.updateOrderStatus(orderId, newStatus);
 
-        // Remove from syncing set after successful sync
-        syncingOrders.delete(orderId);
-
         // Refresh display
-        renderKitchenOrders();
+        await renderKitchenOrders();
         updateKitchenStats();
 
         // Notify parent (split view) to refresh
@@ -319,9 +320,10 @@
       } catch (error) {
         console.error('[KITCHEN] Failed to update order:', error);
         showError('Failed to update order status');
-        // Remove from syncing set on error
-        syncingOrders.delete(orderId);
-        await renderKitchenOrders();
+        // Remove animation on error
+        if (card) {
+          card.classList.remove('syncing-click', 'syncing-dblclick', 'syncing');
+        }
       }
     }
 
@@ -388,7 +390,6 @@
 
     // Listen for messages from parent
     window.addEventListener('message', function(event) {
-      console.log('[KITCHEN] Received message:', event.data);
       if (event.data && event.data.action) {
         switch(event.data.action) {
           case 'refreshOrders':
@@ -396,19 +397,13 @@
             updateKitchenStats();
             break;
           case 'orderSubmitting':
-            console.log('[KITCHEN] Order submitting, showing placeholder');
             isSubmittingOrder = true;
             renderKitchenOrders();
             break;
           case 'orderSubmitted':
-            console.log('[KITCHEN] Order submitted, will hide placeholder after delay');
-            // Wait a bit for Sheets to sync, then refresh and hide placeholder
-            setTimeout(async () => {
-              await renderKitchenOrders();
-              isSubmittingOrder = false;
-              await renderKitchenOrders();
-              updateKitchenStats();
-            }, 800);
+            isSubmittingOrder = false;
+            renderKitchenOrders();
+            updateKitchenStats();
             break;
         }
       }
