@@ -180,11 +180,14 @@ const SHEETS = {
       const data = await response.json();
       if (data.success && data.orders) {
         // Convert string dates back to timestamps for compatibility
-        return data.orders.map(order => ({
+        const orders = data.orders.map(order => ({
           ...order,
           createdAt: new Date(order.createdAt).getTime(),
           completedAt: order.completedAt ? new Date(order.completedAt).getTime() : null
         }));
+        // Update localStorage to match Sheets (prevents deleted orders from reappearing)
+        this.updateLocalOrdersFromSheets(orders);
+        return orders;
       }
     } catch (error) {
       console.error('[SHEETS] Failed to get today orders:', error);
@@ -197,6 +200,27 @@ const SHEETS = {
       const orderDate = new Date(order.createdAt).toDateString();
       return orderDate === today;
     });
+  },
+
+  // Update localStorage orders from Sheets data (removes deleted orders)
+  updateLocalOrdersFromSheets(sheetsOrders) {
+    try {
+      const allOrders = this.getOrders();
+      const today = new Date().toDateString();
+      
+      // Keep non-today orders unchanged
+      const nonTodayOrders = allOrders.filter(order => {
+        const orderDate = new Date(order.createdAt).toDateString();
+        return orderDate !== today;
+      });
+      
+      // Replace today's orders with Sheets data
+      const updatedOrders = [...nonTodayOrders, ...sheetsOrders];
+      localStorage.setItem('umamiOrders', JSON.stringify(updatedOrders));
+      console.log('[SHEETS] Updated localStorage from Sheets:', sheetsOrders.length, 'orders');
+    } catch (e) {
+      console.error('[SHEETS] Failed to update localStorage:', e);
+    }
   },
 
   // Get today's total sales (from Google Sheets API)
