@@ -571,7 +571,7 @@ async function completeOrder(paymentMethod) {
     window.parent.postMessage({ action: 'orderSubmitting' }, '*');
   }
 
-  const order = SHEETS.addOrder({
+  const order = await SHEETS.addOrder({
     items: [...currentOrder.items],
     subtotal: currentOrder.subtotal,
     vat: currentOrder.vat,
