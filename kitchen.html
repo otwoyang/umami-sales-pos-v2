@@ -180,9 +180,9 @@
         completed: filteredOrders.filter(o => o.status === 'completed')
       };
 
-      // Add placeholder if order is being submitted
+      // Add placeholder if order is being submitted (add to end of pending list)
       if (isSubmittingOrder && kitchenFilter === 'active') {
-        grouped.pending.unshift({ isPlaceholder: true });
+        grouped.pending.push({ isPlaceholder: true });
       }
 
       // Sort: cooking first, then pending, then completed
