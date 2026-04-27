@@ -1725,6 +1725,63 @@ body {
   height: calc(100dvh - 6vmin);
 }
 
+/* ==================== SYNC ANIMATION ==================== */
+
+/* Click animation - blue border (pending -> cooking) */
+.order-card.syncing-click {
+  animation: syncClick 0.5s ease;
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 1vmin var(--accent-blue);
+}
+
+/* Double-click animation - green border (cooking -> completed) */
+.order-card.syncing-dblclick {
+  animation: syncDblClick 0.5s ease;
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 1vmin var(--accent-green);
+}
+
+/* Syncing state - reduced opacity with loading overlay */
+.order-card.syncing {
+  opacity: 0.6;
+  pointer-events: none;
+  position: relative;
+}
+
+.order-card.syncing::after {
+  content: '⟳';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 5vmin;
+  color: var(--accent-blue);
+  animation: spin 1s linear infinite;
+}
+
+.order-card.syncing .order-card-status::after {
+  content: ' Syncing...';
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+@keyframes syncClick {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes syncDblClick {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 .split-pane {
   display: flex;
   overflow: hidden;

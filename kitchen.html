@@ -269,13 +269,22 @@
 
     // Update order status
     async function updateOrderStatus(orderId, newStatus) {
+      const card = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
+      const isDblClick = newStatus === 'completed';
+
+      // Add animation class
+      if (card) {
+        card.classList.add(isDblClick ? 'syncing-dblclick' : 'syncing-click');
+        card.classList.add('syncing');
+      }
+
       try {
         await SHEETS.updateOrderStatus(orderId, newStatus);
-        
+
         // Refresh display
         await renderKitchenOrders();
         updateKitchenStats();
-        
+
         // Notify parent (split view) to refresh
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ action: 'refreshOrders' }, '*');
@@ -283,6 +292,10 @@
       } catch (error) {
         console.error('[KITCHEN] Failed to update order:', error);
         showError('Failed to update order status');
+        // Remove animation on error
+        if (card) {
+          card.classList.remove('syncing-click', 'syncing-dblclick', 'syncing');
+        }
       }
     }
 
