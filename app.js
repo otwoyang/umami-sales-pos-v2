@@ -682,11 +682,11 @@ function showReceipt(order) {
   modal.classList.add('show');
   activeModal = 'receiptModal';
   
-  // Auto-close after 60 seconds
+  // Auto-close after 10 seconds and start new order
   if (receiptAutoCloseTimer) clearTimeout(receiptAutoCloseTimer);
   receiptAutoCloseTimer = setTimeout(() => {
-    closeReceipt();
-  }, 60000);
+    newOrder();
+  }, 10000);
 }
 
 function closeReceipt() {
