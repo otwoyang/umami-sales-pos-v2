@@ -180,9 +180,10 @@
         completed: filteredOrders.filter(o => o.status === 'completed')
       };
 
-      // Add placeholder if order is being submitted (add to front of pending list)
-      if (isSubmittingOrder && kitchenFilter === 'active') {
-        grouped.pending.unshift({ isPlaceholder: true });
+      // Add placeholder if order is being submitted (add to end of pending list)
+      // Only show placeholder if we don't have the real order from message yet
+      if (isSubmittingOrder && kitchenFilter === 'active' && pendingOrdersFromMessage.length === 0) {
+        grouped.pending.push({ isPlaceholder: true });
       }
 
       // Sort: cooking first, then pending, then completed
@@ -418,15 +419,17 @@
             break;
           case 'orderSubmitted':
             console.log('[KITCHEN] Order submitted, hiding placeholder');
-            // Always hide placeholder and show new order immediately
-            isSubmittingOrder = false;
-            // If order data is provided, add it to pending orders immediately
+            // First, save the order data (before hiding placeholder)
             if (event.data.order) {
               pendingOrdersFromMessage = [event.data.order];
             }
-            // Force immediate synchronous render first
-            renderKitchenOrders();
-            updateKitchenStats();
+            // Then hide placeholder
+            isSubmittingOrder = false;
+            // Finally render - placeholder will be gone, real order will show
+            (async () => {
+              await renderKitchenOrders();
+              updateKitchenStats();
+            })();
             break;
         }
       }
