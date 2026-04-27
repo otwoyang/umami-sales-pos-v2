@@ -36,7 +36,7 @@ const SHEETS = {
 
   // Get default Web App URL
   getDefaultWebAppUrl() {
-    return 'https://script.google.com/macros/s/AKfycbzC_qFzTXZoxxziJF6qcUOIWq1IyPRB9LTotjcP5Go7cS3ZxG_r0pgi8dC880CzhTn4/exec';
+    return 'https://script.google.com/macros/s/AKfycbycw1_IIqWpli761sBRvQXPYfmj4qGcFnCvsvlDMfjGn_GIBJgHHGdNiw_DeTB4vqY/exec';
   },
 
   // Generate order number: YYYYMMDDHHMMSS
@@ -98,46 +98,17 @@ const SHEETS = {
 
   // Products are read-only from Google Sheets, no save function
 
-  // JSONP helper for GAS (bypasses CORS)
-  jsonpRequest(url) {
-    return new Promise((resolve, reject) => {
-      const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      const script = document.createElement('script');
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error('JSONP timeout'));
-      }, 10000);
-
-      const cleanup = () => {
-        clearTimeout(timeout);
-        if (script.parentNode) script.parentNode.removeChild(script);
-        delete window[callbackName];
-      };
-
-      window[callbackName] = (data) => {
-        cleanup();
-        resolve(data);
-      };
-
-      script.onerror = () => {
-        cleanup();
-        reject(new Error('JSONP failed'));
-      };
-
-      script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
-      document.head.appendChild(script);
-    });
-  },
-
   // Load products from Google Sheets
   async loadProductsFromSheets() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) return null;
 
     try {
+      // Remove /exec if present, then add it back with query param
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getProducts';
-      const data = await this.jsonpRequest(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success && data.products && data.products.length > 0) {
         return data.products;
       }
@@ -188,7 +159,7 @@ const SHEETS = {
     return order;
   },
 
-  // Get today's orders (from Google Sheets API via JSONP)
+  // Get today's orders (from Google Sheets API)
   async getTodayOrders() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) {
@@ -205,7 +176,8 @@ const SHEETS = {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const today = new Date().toISOString().split('T')[0];
       const url = baseUrl + '/exec?action=getOrders&date=' + today;
-      const data = await this.jsonpRequest(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success && data.orders) {
         // Convert string dates back to timestamps for compatibility
         return data.orders.map(order => ({
@@ -227,7 +199,7 @@ const SHEETS = {
     });
   },
 
-  // Get today's total sales (from Google Sheets API via JSONP)
+  // Get today's total sales (from Google Sheets API)
   async getTodaySales() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) {
@@ -239,7 +211,8 @@ const SHEETS = {
     try {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getTodaySummary';
-      const data = await this.jsonpRequest(url);
+      const response = await fetch(url);
+      const data = await response.json();
       if (data.success) {
         return data.todaySales || 0;
       }
