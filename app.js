@@ -169,8 +169,28 @@ const SHEETS = {
     });
   },
 
-  // Get today's total sales
-  getTodaySales() {
+  // Get today's total sales (from Google Sheets API)
+  async getTodaySales() {
+    const webAppUrl = this.getWebAppUrl();
+    if (!webAppUrl) {
+      console.log('[SHEETS] No Web App URL, falling back to localStorage');
+      const orders = this.getTodayOrders();
+      return orders.reduce((sum, order) => sum + (order.total || 0), 0);
+    }
+
+    try {
+      const baseUrl = webAppUrl.replace(/\/exec$/, '');
+      const url = baseUrl + '/exec?action=getTodaySummary';
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success) {
+        return data.todaySales || 0;
+      }
+    } catch (error) {
+      console.error('[SHEETS] Failed to get today sales:', error);
+    }
+    
+    // Fallback to localStorage
     const orders = this.getTodayOrders();
     return orders.reduce((sum, order) => sum + (order.total || 0), 0);
   },
@@ -515,7 +535,7 @@ async function completeOrder(paymentMethod) {
 
 // Update today sales display
 async function updateTodaySales() {
-  const sales = SHEETS.getTodaySales();
+  const sales = await SHEETS.getTodaySales();
   const amountEl = document.getElementById('todaySalesAmount');
   const boxEl = document.getElementById('todaySalesBox');
   
