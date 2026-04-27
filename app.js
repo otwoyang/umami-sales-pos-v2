@@ -245,8 +245,15 @@ const SHEETS = {
       
       // Replace today's orders with Sheets data
       const updatedOrders = [...nonTodayOrders, ...sheetsOrders];
-      localStorage.setItem('umamiOrders', JSON.stringify(updatedOrders));
-      console.log('[SHEETS] Updated localStorage from Sheets:', sheetsOrders.length, 'orders');
+      
+      // Only update if data actually changed (compare order IDs)
+      const currentIds = allOrders.filter(o => new Date(o.createdAt).toDateString() === today).map(o => o.id).sort().join(',');
+      const newIds = sheetsOrders.map(o => o.id).sort().join(',');
+      
+      if (currentIds !== newIds) {
+        localStorage.setItem('umamiOrders', JSON.stringify(updatedOrders));
+        console.log('[SHEETS] Updated localStorage from Sheets:', sheetsOrders.length, 'orders');
+      }
     } catch (e) {
       console.error('[SHEETS] Failed to update localStorage:', e);
     }
