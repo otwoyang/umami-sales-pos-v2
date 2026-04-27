@@ -98,17 +98,47 @@ const SHEETS = {
 
   // Products are read-only from Google Sheets, no save function
 
+  // JSONP helper function
+  jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+      const script = document.createElement('script');
+      
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        document.body.removeChild(script);
+        resolve(data);
+      };
+      
+      script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+      script.onerror = function() {
+        delete window[callbackName];
+        document.body.removeChild(script);
+        reject(new Error('JSONP failed'));
+      };
+      
+      document.body.appendChild(script);
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (window[callbackName]) {
+          delete window[callbackName];
+          if (script.parentNode) document.body.removeChild(script);
+          reject(new Error('JSONP timeout'));
+        }
+      }, 10000);
+    });
+  },
+
   // Load products from Google Sheets
   async loadProductsFromSheets() {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) return null;
 
     try {
-      // Remove /exec if present, then add it back with query param
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getProducts';
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await this.jsonp(url);
       if (data.success && data.products && data.products.length > 0) {
         return data.products;
       }
@@ -176,8 +206,7 @@ const SHEETS = {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const today = new Date().toISOString().split('T')[0];
       const url = baseUrl + '/exec?action=getOrders&date=' + today;
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await this.jsonp(url);
       if (data.success && data.orders) {
         // Convert string dates back to timestamps for compatibility
         const orders = data.orders.map(order => ({
@@ -228,15 +257,15 @@ const SHEETS = {
     const webAppUrl = this.getWebAppUrl();
     if (!webAppUrl) {
       console.log('[SHEETS] No Web App URL, falling back to localStorage');
-      const orders = this.getTodayOrders();
+      const orders = await this.getTodayOrders();
+      if (!Array.isArray(orders)) return 0;
       return orders.reduce((sum, order) => sum + (order.total || 0), 0);
     }
 
     try {
       const baseUrl = webAppUrl.replace(/\/exec$/, '');
       const url = baseUrl + '/exec?action=getTodaySummary';
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await this.jsonp(url);
       if (data.success) {
         return data.todaySales || 0;
       }
@@ -245,7 +274,8 @@ const SHEETS = {
     }
     
     // Fallback to localStorage
-    const orders = this.getTodayOrders();
+    const orders = await this.getTodayOrders();
+    if (!Array.isArray(orders)) return 0;
     return orders.reduce((sum, order) => sum + (order.total || 0), 0);
   },
 
