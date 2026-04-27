@@ -207,19 +207,12 @@
       document.querySelectorAll('.order-card').forEach(card => {
         const orderId = card.dataset.orderId;
         const status = card.dataset.status;
-        
-        // Single click: pending -> cooking
-        card.addEventListener('click', (e) => {
+
+        // Double click to advance status
+        card.addEventListener('dblclick', (e) => {
           if (status === 'pending') {
             updateOrderStatus(orderId, 'cooking');
           } else if (status === 'cooking') {
-            // Double click handled separately
-          }
-        });
-
-        // Double click: cooking -> completed
-        card.addEventListener('dblclick', (e) => {
-          if (status === 'cooking') {
             updateOrderStatus(orderId, 'completed');
           }
         });
