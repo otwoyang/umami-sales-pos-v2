@@ -310,8 +310,8 @@ body {
 
 /* ==================== ORDER SUMMARY ==================== */
 .order-summary {
-  padding: var(--space-sm) var(--space-md);
-  padding-bottom: calc(var(--space-xs) + env(safe-area-inset-bottom));
+  padding: var(--space-xs) var(--space-md);
+  padding-bottom: env(safe-area-inset-bottom);
   border-top: 0.2vmin solid var(--border-color);
   background: var(--bg-card);
 }
@@ -483,7 +483,7 @@ body {
 /* ==================== TODAY SALES DISPLAY ==================== */
 .today-sales {
   position: fixed;
-  bottom: calc(var(--space-md) + 80px);
+  bottom: calc(var(--space-md) + 120px);
   right: var(--space-lg);
   padding: var(--space-md) var(--space-lg);
   background: var(--bg-secondary);
