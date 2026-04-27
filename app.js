@@ -72,11 +72,11 @@ const SHEETS = {
     }
   },
 
-  saveOrders(orders) {
+  async saveOrders(orders) {
     try {
       localStorage.setItem('umamiOrders', JSON.stringify(orders));
       // Also sync to Google Sheets
-      this.syncToSheets(orders);
+      await this.syncToSheets(orders);
     } catch (e) {
       console.error('[SHEETS] Failed to save orders:', e);
     }
@@ -139,7 +139,7 @@ const SHEETS = {
   },
 
   // Add order
-  addOrder(orderData) {
+  async addOrder(orderData) {
     const orders = this.getOrders();
     const order = {
       id: this.generateUUID(),
@@ -155,7 +155,7 @@ const SHEETS = {
       completedAt: null
     };
     orders.unshift(order); // Add to beginning
-    this.saveOrders(orders);
+    await this.saveOrders(orders);
     return order;
   },
 
@@ -235,7 +235,7 @@ const SHEETS = {
       if (newStatus === 'completed') {
         order.completedAt = Date.now();
       }
-      this.saveOrders(orders);
+      await this.saveOrders(orders);
     }
     
     // Sync to Google Sheets
@@ -262,12 +262,12 @@ const SHEETS = {
   },
 
   // Delete order
-  deleteOrder(orderId) {
+  async deleteOrder(orderId) {
     const orders = this.getOrders();
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
       orders.splice(index, 1);
-      this.saveOrders(orders);
+      await this.saveOrders(orders);
     }
   },
 
@@ -566,6 +566,11 @@ function setPromiseTime() {
 async function completeOrder(paymentMethod) {
   if (currentOrder.items.length === 0) return;
 
+  // Notify kitchen to show pending placeholder
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ action: 'orderSubmitting' }, '*');
+  }
+
   const order = SHEETS.addOrder({
     items: [...currentOrder.items],
     subtotal: currentOrder.subtotal,
@@ -583,6 +588,11 @@ async function completeOrder(paymentMethod) {
   // Clear order
   clearOrder();
   await updateTodaySales();
+
+  // Notify kitchen order is ready
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ action: 'orderSubmitted' }, '*');
+  }
 }
 
 // Update today sales display
@@ -763,7 +773,17 @@ async function shareReceipt() {
 async function showHistory() {
   const modal = document.getElementById('historyModal');
   const list = document.getElementById('historyList');
-  
+
+  // Show loading state immediately
+  list.innerHTML = `
+    <div class="history-loading">
+      <div class="history-loading-spinner">⟳</div>
+      <div class="history-loading-text">Syncing with Google Sheets...</div>
+    </div>
+  `;
+  modal.classList.add('show');
+  activeModal = 'historyModal';
+
   const orders = await SHEETS.getTodayOrders();
   orders.sort((a, b) => b.createdAt - a.createdAt);
 
@@ -784,9 +804,6 @@ async function showHistory() {
       </div>
     `).join('');
   }
-
-  modal.classList.add('show');
-  activeModal = 'historyModal';
 }
 
 function closeHistory() {

@@ -886,6 +886,35 @@ body {
   color: white;
 }
 
+/* History Loading State */
+.history-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3em;
+  gap: var(--space-md);
+}
+
+.history-loading-spinner {
+  font-size: 3em;
+  animation: spin 1s linear infinite;
+  color: var(--accent-blue);
+}
+
+.history-loading-text {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+  background: var(--accent-red);
+  color: white;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -1207,6 +1236,28 @@ body {
 .order-card.completed {
   border-left: 1vmin solid var(--accent-green);
   opacity: 0.7;
+}
+
+/* Placeholder card for submitting order */
+.order-card.placeholder {
+  border-left: 1vmin solid var(--accent-orange);
+  opacity: 0.5;
+  animation: placeholder-pulse 1.5s ease-in-out infinite;
+  cursor: default;
+}
+
+.order-card.placeholder:hover {
+  transform: none;
+  border-color: var(--border-color);
+}
+
+@keyframes placeholder-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .order-card-header {

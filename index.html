@@ -86,13 +86,34 @@
   <div id="dragOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;"></div>
 
   <script>
+    // Message forwarding between iframes
+    const kitchenFrame = document.getElementById('kitchenFrame');
+    const orderFrame = document.getElementById('orderFrame');
+
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.action) {
+        // Forward order submitting/submitted messages from order to kitchen
+        if (event.data.action === 'orderSubmitting' || event.data.action === 'orderSubmitted') {
+          if (kitchenFrame && kitchenFrame.contentWindow) {
+            kitchenFrame.contentWindow.postMessage(event.data, '*');
+          }
+        }
+        // Forward refresh orders message from kitchen to order
+        if (event.data.action === 'refreshOrders') {
+          if (orderFrame && orderFrame.contentWindow) {
+            orderFrame.contentWindow.postMessage(event.data, '*');
+          }
+        }
+      }
+    });
+
     // Draggable divider setup
     (function() {
       const divider = document.getElementById('splitDivider');
       const leftPane = document.getElementById('splitPaneLeft');
       const container = document.getElementById('splitViewContent');
       const dragOverlay = document.getElementById('dragOverlay');
-      
+
       if (!divider || !leftPane || !container) return;
 
       let isDragging = false;

@@ -86,13 +86,14 @@
 
   <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="/app.js?v=20260427d"></script>
+  <script src="/app.js?v=202604272003"></script>
 
   <script>
     // Kitchen page specific initialization
     let kitchenFilter = 'all';
     let kitchenRefreshInterval = null;
     let kitchenTimerInterval = null;
+    let isSubmittingOrder = false;
 
     // Override init function for kitchen page
     window.initKitchenPage = async function() {
@@ -164,6 +165,11 @@
         completed: filteredOrders.filter(o => o.status === 'completed')
       };
 
+      // Add placeholder if order is being submitted
+      if (isSubmittingOrder && kitchenFilter === 'active') {
+        grouped.pending.unshift({ isPlaceholder: true });
+      }
+
       // Sort: cooking first, then pending, then completed
       const statusOrder = ['cooking', 'pending', 'completed'];
       
@@ -221,6 +227,28 @@
 
     // Render single order card
     function renderOrderCard(order) {
+      // Render placeholder card for submitting order
+      if (order.isPlaceholder) {
+        return `
+          <div class="order-card placeholder">
+            <div class="order-card-header">
+              <span class="order-card-number">#...</span>
+              <span class="order-card-time">⏳</span>
+            </div>
+            <div class="order-card-status">SYNCING</div>
+            <div class="order-card-items">
+              <div class="order-card-item">
+                <span class="order-card-item-name">New order incoming...</span>
+              </div>
+            </div>
+            <div class="order-card-footer">
+              <div class="order-timer">⟳</div>
+              <div class="order-card-total">...</div>
+            </div>
+          </div>
+        `;
+      }
+
       const items = order.items || [];
       const itemList = items.map(item => `
         <div class="order-card-item">
@@ -362,9 +390,21 @@
 
     // Listen for messages from parent
     window.addEventListener('message', function(event) {
+      console.log('[KITCHEN] Received message:', event.data);
       if (event.data && event.data.action) {
         switch(event.data.action) {
           case 'refreshOrders':
+            renderKitchenOrders();
+            updateKitchenStats();
+            break;
+          case 'orderSubmitting':
+            console.log('[KITCHEN] Order submitting, showing placeholder');
+            isSubmittingOrder = true;
+            renderKitchenOrders();
+            break;
+          case 'orderSubmitted':
+            console.log('[KITCHEN] Order submitted, hiding placeholder');
+            isSubmittingOrder = false;
             renderKitchenOrders();
             updateKitchenStats();
             break;
