@@ -339,6 +339,11 @@
       });
     }
 
+    // Initialize kitchen page when DOM is ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initKitchenPage();
+    });
+
     // Listen for messages from parent
     window.addEventListener('message', function(event) {
       if (event.data && event.data.action) {
