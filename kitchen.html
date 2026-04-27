@@ -143,12 +143,15 @@
       const orders = await SHEETS.getTodayOrders();
       
       // Merge pending orders from message (immediate display before Sheets sync)
+      // Only add orders that don't exist in Sheets, and respect Sheets status
       if (pendingOrdersFromMessage.length > 0) {
         pendingOrdersFromMessage.forEach(msgOrder => {
-          const exists = orders.some(o => o.id === msgOrder.id);
-          if (!exists) {
+          const existingOrder = orders.find(o => o.id === msgOrder.id);
+          if (!existingOrder) {
+            // Order not in Sheets yet, add from message
             orders.push(msgOrder);
           }
+          // If exists in Sheets, use Sheets status (don't override)
         });
         // Clear after merging
         pendingOrdersFromMessage = [];
