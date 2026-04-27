@@ -454,8 +454,8 @@ function addToOrder(productId) {
   }
   console.log('[ORDER] Found product:', product);
 
-  // Check if already in order
-  const existing = currentOrder.items.find(i => i.productId === productId);
+  // Check if already in order (convert to string for comparison)
+  const existing = currentOrder.items.find(i => String(i.productId) === productIdStr);
   if (existing) {
     existing.qty++;
   } else {
@@ -474,7 +474,9 @@ function addToOrder(productId) {
 
 // Remove item from order
 function removeFromOrder(productId) {
-  const index = currentOrder.items.findIndex(i => i.productId === productId);
+  // Convert to string for comparison since IDs may be numbers or strings
+  const productIdStr = String(productId);
+  const index = currentOrder.items.findIndex(i => String(i.productId) === productIdStr);
   if (index !== -1) {
     currentOrder.items.splice(index, 1);
     recalculateOrder();
