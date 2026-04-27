@@ -74,64 +74,68 @@
     </div>
   </div>
 
+  <!-- Drag overlay to prevent iframe from stealing mouse events -->
+  <div id="dragOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;"></div>
+
   <script>
     // Draggable divider setup
     (function() {
       const divider = document.getElementById('splitDivider');
       const leftPane = document.getElementById('splitPaneLeft');
       const container = document.getElementById('splitViewContent');
+      const dragOverlay = document.getElementById('dragOverlay');
       
       if (!divider || !leftPane || !container) return;
 
       let isDragging = false;
 
-      divider.addEventListener('mousedown', (e) => {
+      function startDrag(e) {
         isDragging = true;
-        e.preventDefault();
+        if (e.preventDefault) e.preventDefault();
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-      });
+        // Show overlay to prevent iframe from stealing events
+        if (dragOverlay) dragOverlay.style.display = 'block';
+      }
 
-      document.addEventListener('mousemove', (e) => {
+      function doDrag(clientX) {
         if (!isDragging) return;
         
         const rect = container.getBoundingClientRect();
-        let percent = ((e.clientX - rect.left) / rect.width) * 100;
+        let percent = ((clientX - rect.left) / rect.width) * 100;
         
         // Clamp between 20% and 80%
         percent = Math.max(20, Math.min(80, percent));
         
         leftPane.style.flex = `0 0 ${percent}%`;
-      });
+      }
 
-      document.addEventListener('mouseup', () => {
+      function endDrag() {
         if (isDragging) {
           isDragging = false;
           document.body.style.cursor = '';
           document.body.style.userSelect = '';
+          if (dragOverlay) dragOverlay.style.display = 'none';
         }
-      });
+      }
 
-      // Touch support
+      // Mouse events
+      divider.addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', (e) => doDrag(e.clientX));
+      document.addEventListener('mouseup', endDrag);
+
+      // Touch events
       divider.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        e.preventDefault();
-      });
+        startDrag(e);
+      }, { passive: false });
 
       document.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        
         const touch = e.touches[0];
-        const rect = container.getBoundingClientRect();
-        let percent = ((touch.clientX - rect.left) / rect.width) * 100;
-        percent = Math.max(20, Math.min(80, percent));
-        
-        leftPane.style.flex = `0 0 ${percent}%`;
-      });
+        doDrag(touch.clientX);
+      }, { passive: false });
 
-      document.addEventListener('touchend', () => {
-        isDragging = false;
-      });
+      document.addEventListener('touchend', endDrag);
     })();
   </script>
 </body>
