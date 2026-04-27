@@ -26,12 +26,17 @@ window.onerror = function(msg, url, line, col, error) {
 const SHEETS = {
   // Get the configured Google Apps Script Web App URL
   getWebAppUrl() {
-    return localStorage.getItem('umamiSheetsUrl') || '';
+    return localStorage.getItem('umamiSheetsUrl') || this.getDefaultWebAppUrl();
   },
 
   // Configure Web App URL
   setWebAppUrl(url) {
     localStorage.setItem('umamiSheetsUrl', url);
+  },
+
+  // Get default Web App URL
+  getDefaultWebAppUrl() {
+    return 'https://script.google.com/macros/s/AKfycbywEcP4WsIQ6UNL6MZvpSHI1BQ4p0FXrhzw7wIhbVR031Tni-uc6rXxd_83t5oVQPg/exec';
   },
 
   // Generate order number: YYYYMMDDHHMMSS
