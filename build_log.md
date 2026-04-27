@@ -101,6 +101,7 @@ renderProducts();
 | 2026-04-27 | 初始化 build_log.md | 记录项目关键信息 |
 | 2026-04-27 | 修复产品加载 Bug | 添加 await SHEETS.init() |
 | 2026-04-27 | 调试订单添加问题 | 添加调试日志追踪 addToOrder 和 renderProducts |
+| 2026-04-27 | 修复订单添加 Bug | 修复产品 ID 类型不匹配问题（Google Sheets 返回数字，onclick 传递字符串）|
 
 ---
 

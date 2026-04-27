@@ -9,14 +9,41 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f8fafc;
       height: 100vh;
-      display: flex;
-    }
-    .kitchen-panel {
-      flex: 1;
-      border-right: 2px solid #cbd5e1;
       overflow: hidden;
     }
-    .order-panel {
+    #splitViewContent {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+    #splitPaneLeft {
+      flex: 0 0 50%;
+      overflow: hidden;
+      display: flex;
+    }
+    #splitDivider {
+      width: 6px;
+      background: #cbd5e1;
+      cursor: col-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    #splitDivider:hover {
+      background: #94a3b8;
+    }
+    #splitDivider::before {
+      content: '⋮';
+      color: #64748b;
+      font-size: 12px;
+    }
+    #splitPaneRight {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+    }
+    .panel {
       flex: 1;
       overflow: hidden;
     }
@@ -28,11 +55,79 @@
   </style>
 </head>
 <body>
-  <div class="kitchen-panel">
-    <iframe src="/kitchen.html" id="kitchenFrame"></iframe>
+  <div id="splitViewContent">
+    <div id="splitPaneLeft">
+      <div class="panel">
+        <iframe src="/kitchen.html" id="kitchenFrame"></iframe>
+      </div>
+    </div>
+    <div id="splitDivider"></div>
+    <div id="splitPaneRight">
+      <div class="panel">
+        <iframe src="/order.html" id="orderFrame"></iframe>
+      </div>
+    </div>
   </div>
-  <div class="order-panel">
-    <iframe src="/order.html" id="orderFrame"></iframe>
-  </div>
+
+  <script>
+    // Draggable divider setup
+    (function() {
+      const divider = document.getElementById('splitDivider');
+      const leftPane = document.getElementById('splitPaneLeft');
+      const container = document.getElementById('splitViewContent');
+      
+      if (!divider || !leftPane || !container) return;
+
+      let isDragging = false;
+
+      divider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        e.preventDefault();
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const rect = container.getBoundingClientRect();
+        let percent = ((e.clientX - rect.left) / rect.width) * 100;
+        
+        // Clamp between 20% and 80%
+        percent = Math.max(20, Math.min(80, percent));
+        
+        leftPane.style.flex = `0 0 ${percent}%`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      });
+
+      // Touch support
+      divider.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        e.preventDefault();
+      });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        
+        const touch = e.touches[0];
+        const rect = container.getBoundingClientRect();
+        let percent = ((touch.clientX - rect.left) / rect.width) * 100;
+        percent = Math.max(20, Math.min(80, percent));
+        
+        leftPane.style.flex = `0 0 ${percent}%`;
+      });
+
+      document.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+    })();
+  </script>
 </body>
 </html>
