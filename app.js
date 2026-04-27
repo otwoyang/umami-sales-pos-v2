@@ -99,9 +99,50 @@ const SHEETS = {
   saveProducts(products) {
     try {
       localStorage.setItem('umamiProducts', JSON.stringify(products));
+      // Sync to Google Sheets
+      this.syncProductsToSheets(products);
     } catch (e) {
       console.error('[SHEETS] Failed to save products:', e);
     }
+  },
+
+  // Sync products to Google Sheets
+  async syncProductsToSheets(products) {
+    const webAppUrl = this.getWebAppUrl();
+    if (!webAppUrl) return;
+
+    try {
+      await fetch(webAppUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'syncProducts',
+          products: products
+        })
+      });
+      console.log('[SHEETS] Products synced to Google Sheets');
+    } catch (error) {
+      console.error('[SHEETS] Products sync failed:', error);
+    }
+  },
+
+  // Load products from Google Sheets
+  async loadProductsFromSheets() {
+    const webAppUrl = this.getWebAppUrl();
+    if (!webAppUrl) return null;
+
+    try {
+      const url = webAppUrl.replace('/exec', '') + '/exec?action=getProducts';
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success && data.products && data.products.length > 0) {
+        return data.products;
+      }
+    } catch (error) {
+      console.error('[SHEETS] Failed to load products:', error);
+    }
+    return null;
   },
 
   getDefaultProducts() {
@@ -236,13 +277,20 @@ const SHEETS = {
   },
 
   // Initialize
-  init() {
-    // Ensure default products exist
-    const products = this.getProducts();
-    if (products.length === 0) {
-      this.saveProducts(this.getDefaultProducts());
+  async init() {
+    // Try to load products from Google Sheets first
+    const sheetProducts = await this.loadProductsFromSheets();
+    if (sheetProducts && sheetProducts.length > 0) {
+      localStorage.setItem('umamiProducts', JSON.stringify(sheetProducts));
+      console.log('[SHEETS] Loaded', sheetProducts.length, 'products from Google Sheets');
+    } else {
+      // Fallback to localStorage or defaults
+      const products = this.getProducts();
+      if (products.length === 0) {
+        this.saveProducts(this.getDefaultProducts());
+      }
+      console.log('[SHEETS] Initialized with', this.getProducts().length, 'products');
     }
-    console.log('[SHEETS] Initialized with', this.getProducts().length, 'products');
   }
 };
 
