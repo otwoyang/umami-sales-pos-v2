@@ -104,7 +104,9 @@ const SHEETS = {
     if (!webAppUrl) return null;
 
     try {
-      const url = webAppUrl.replace('/exec', '') + '/exec?action=getProducts';
+      // Remove /exec if present, then add it back with query param
+      const baseUrl = webAppUrl.replace(/\/exec$/, '');
+      const url = baseUrl + '/exec?action=getProducts';
       const response = await fetch(url);
       const data = await response.json();
       if (data.success && data.products && data.products.length > 0) {
@@ -255,10 +257,10 @@ const SHEETS = {
       localStorage.setItem('umamiProducts', JSON.stringify(sheetProducts));
       console.log('[SHEETS] Loaded', sheetProducts.length, 'products from Google Sheets');
     } else {
-      // Fallback to localStorage or defaults
+      // No products in Sheets - use defaults in localStorage only
       const products = this.getProducts();
       if (products.length === 0) {
-        this.saveProducts(this.getDefaultProducts());
+        localStorage.setItem('umamiProducts', JSON.stringify(this.getDefaultProducts()));
       }
       console.log('[SHEETS] Initialized with', this.getProducts().length, 'products');
     }
@@ -290,8 +292,8 @@ async function initOrderPage() {
   if (orderSalesInterval) clearInterval(orderSalesInterval);
   if (orderETAInterval) clearInterval(orderETAInterval);
 
-  // Initialize SHEETS module
-  SHEETS.init();
+  // Initialize SHEETS module and wait for products to load
+  await SHEETS.init();
 
   // Render products and update sales
   renderProducts();
@@ -930,15 +932,15 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const page = document.body.dataset.page;
   console.log('[APP] Page:', page);
 
   if (page === 'order') {
-    initOrderPage();
+    await initOrderPage();
   } else if (page === 'kitchen') {
     // Kitchen page has its own initialization in kitchen.html
-    SHEETS.init();
+    await SHEETS.init();
     setupInstallPrompt();
     setupOfflineDetection();
   }
