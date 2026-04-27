@@ -343,7 +343,12 @@ async function updateETA() {
 // Render products grid
 function renderProducts() {
   const products = SHEETS.getProducts().filter(p => p.isActive !== false);
+  console.log('[RENDER] Products to render:', products.length, products);
   const grid = document.getElementById('productsGrid');
+  if (!grid) {
+    console.error('[RENDER] productsGrid element not found!');
+    return;
+  }
   
   // Sort by category
   const categoryOrder = { sushi: 0, drink: 1, addon: 2, discount: 3 };
@@ -353,18 +358,28 @@ function renderProducts() {
     return (a.sortOrder || 0) - (b.sortOrder || 0);
   });
 
-  grid.innerHTML = products.map(p => `
-    <button class="product-btn ${p.category}" onclick="addToOrder('${p.id}')">
+  grid.innerHTML = products.map(p => {
+    const safeId = String(p.id).replace(/'/g, "\\'");
+    return `
+    <button class="product-btn ${p.category}" onclick="window.addToOrder('${safeId}')">
       <span class="product-name">${p.name}</span>
       <span class="product-price">€${p.price.toFixed(2)}</span>
     </button>
-  `).join('');
+  `}).join('');
+  console.log('[RENDER] Products rendered to grid');
 }
 
 // Add product to order
 function addToOrder(productId) {
-  const product = SHEETS.getProducts().find(p => p.id === productId);
-  if (!product) return;
+  console.log('[ORDER] Adding product:', productId);
+  const products = SHEETS.getProducts();
+  console.log('[ORDER] Available products:', products);
+  const product = products.find(p => p.id === productId);
+  if (!product) {
+    console.error('[ORDER] Product not found:', productId);
+    return;
+  }
+  console.log('[ORDER] Found product:', product);
 
   // Check if already in order
   const existing = currentOrder.items.find(i => i.productId === productId);
