@@ -291,7 +291,35 @@ const SHEETS = {
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
       orders.splice(index, 1);
-      await this.saveOrders(orders);
+      // Save to localStorage first
+      localStorage.setItem('umamiOrders', JSON.stringify(orders));
+      // Sync deletion to Sheets
+      await this.syncDeleteToSheets(orderId);
+    }
+  },
+
+  // Sync deletion to Google Sheets
+  async syncDeleteToSheets(orderId) {
+    const webAppUrl = this.getWebAppUrl();
+    if (!webAppUrl) {
+      console.log('[SHEETS] No Web App URL configured, skipping delete sync');
+      return;
+    }
+
+    try {
+      await fetch(webAppUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'deleteOrder',
+          orderId: orderId,
+          timestamp: Date.now()
+        })
+      });
+      console.log('[SHEETS] Order deletion synced:', orderId);
+    } catch (error) {
+      console.error('[SHEETS] Delete sync failed:', error);
     }
   },
 
@@ -865,7 +893,7 @@ function viewReceipt(orderId) {
 
 async function deleteHistoryOrder(orderId) {
   if (!confirm('Delete this order?')) return;
-  SHEETS.deleteOrder(orderId);
+  await SHEETS.deleteOrder(orderId);
   showHistory(); // Refresh list
   await updateTodaySales();
   
