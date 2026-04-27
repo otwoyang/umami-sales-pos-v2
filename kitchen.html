@@ -56,9 +56,7 @@
       </div>
 
       <div class="kitchen-filters">
-        <button class="filter-btn active" data-filter="all" onclick="setKitchenFilter('all')">All</button>
-        <button class="filter-btn" data-filter="pending" onclick="setKitchenFilter('pending')">⏳ Waiting</button>
-        <button class="filter-btn" data-filter="cooking" onclick="setKitchenFilter('cooking')">🔥 Cooking</button>
+        <button class="filter-btn active" data-filter="active" onclick="setKitchenFilter('active')">⏳🔥 Active</button>
         <button class="filter-btn" data-filter="completed" onclick="setKitchenFilter('completed')">✓ Done</button>
       </div>
 
@@ -121,7 +119,7 @@
     // Set filter
     window.setKitchenFilter = function(filter) {
       kitchenFilter = filter;
-      
+
       // Update button states
       document.querySelectorAll('.kitchen-filters .filter-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -129,9 +127,12 @@
           btn.classList.add('active');
         }
       });
-      
+
       renderKitchenOrders();
     };
+
+    // Initialize filter on load
+    kitchenFilter = 'active';
 
     // Render kitchen orders
     async function renderKitchenOrders() {
@@ -150,8 +151,10 @@
 
       // Filter orders
       let filteredOrders = orders;
-      if (kitchenFilter !== 'all') {
-        filteredOrders = orders.filter(o => o.status === kitchenFilter);
+      if (kitchenFilter === 'active') {
+        filteredOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
+      } else if (kitchenFilter === 'completed') {
+        filteredOrders = orders.filter(o => o.status === 'completed');
       }
 
       // Group by status
