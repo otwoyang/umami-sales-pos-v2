@@ -181,11 +181,7 @@
         completed: filteredOrders.filter(o => o.status === 'completed')
       };
 
-      // Add placeholder if order is being submitted (add to end of pending list)
-      // Only show placeholder if we don't have the real order from message yet
-      if (isSubmittingOrder && kitchenFilter === 'active' && pendingOrdersFromMessage.length === 0) {
-        grouped.pending.push({ isPlaceholder: true });
-      }
+
 
       // Sort: cooking first, then pending, then completed
       const statusOrder = ['cooking', 'pending', 'completed'];
