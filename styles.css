@@ -162,6 +162,8 @@ body {
   flex-direction: column;
   border-right: 0.3vmin solid var(--border-color);
   background: var(--bg-secondary);
+  height: 100%;
+  max-height: 100%;
 }
 
 /* ==================== ORDER HEADER ==================== */
@@ -206,6 +208,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-primary);
+  position: relative;
 }
 
 /* ==================== CURRENT ORDER ==================== */
