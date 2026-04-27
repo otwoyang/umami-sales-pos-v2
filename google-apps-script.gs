@@ -187,11 +187,24 @@ function getOrders(dateStr) {
   for (var i = 1; i < data.length; i++) {
     var createdAt = new Date(data[i][9]);
     if (createdAt.toDateString() === targetDate) {
+      var items = [];
+      try {
+        var itemsData = data[i][3];
+        if (typeof itemsData === 'string' && itemsData.trim().startsWith('[')) {
+          items = JSON.parse(itemsData);
+        } else if (itemsData) {
+          // Handle legacy non-JSON data
+          items = [{ name: String(itemsData), quantity: 1, price: 0 }];
+        }
+      } catch (e) {
+        items = [{ name: 'Unknown items', quantity: 1, price: 0 }];
+      }
+      
       orders.push({
         id: data[i][0],
         orderNumber: data[i][1],
         status: data[i][2],
-        items: JSON.parse(data[i][3]),
+        items: items,
         subtotal: data[i][4],
         vat: data[i][5],
         total: data[i][6],
