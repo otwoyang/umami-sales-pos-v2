@@ -412,15 +412,19 @@
           case 'orderSubmitting':
             console.log('[KITCHEN] Order submitting, showing placeholder');
             isSubmittingOrder = true;
-            renderKitchenOrders();
+            (async () => {
+              await renderKitchenOrders();
+            })();
             break;
           case 'orderSubmitted':
             console.log('[KITCHEN] Order submitted, hiding placeholder');
+            // Always hide placeholder and show new order immediately
             isSubmittingOrder = false;
             // If order data is provided, add it to pending orders immediately
             if (event.data.order) {
               pendingOrdersFromMessage = [event.data.order];
             }
+            // Force immediate synchronous render first
             renderKitchenOrders();
             updateKitchenStats();
             break;
