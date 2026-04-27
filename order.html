@@ -31,7 +31,6 @@
     <header class="header">
       <h1 class="header-title">🍣 Umami POS</h1>
       <nav class="header-nav">
-        <button class="nav-btn" onclick="showProductEditor()">📦 Products</button>
         <button class="nav-btn" onclick="showHistory()">📜 History</button>
         <button class="nav-btn" onclick="openConfigSheets()">⚙️ Config</button>
       </nav>
@@ -164,31 +163,6 @@
     </div>
   </div>
 
-  <!-- Product Editor Modal -->
-  <div id="productEditorModal" class="modal-overlay product-editor" onclick="closeAllModals()">
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">📦 Product Editor</h2>
-        <button class="modal-close" onclick="closeProductEditor()">✕</button>
-      </div>
-      <div id="productEditList" class="modal-body product-editor-body">
-        <!-- Products will be rendered here -->
-      </div>
-      <div class="modal-footer product-editor-footer">
-        <span class="product-count" id="productCount">0 / 15 products</span>
-        <button id="addNewProductBtn" class="add-product-btn" onclick="addNewProduct()">
-          ➕ Add
-        </button>
-        <button class="reset-products-btn" onclick="resetAllProducts()">
-          🔄 Reset All
-        </button>
-        <button class="sync-btn" onclick="configureGoogleSheets()" style="background:#4285f4;color:white;">
-          📊 Google Sheets
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Config Sheets Modal -->
   <div id="configSheetsModal" class="modal-overlay" onclick="closeAllModals()">
     <div class="modal" onclick="event.stopPropagation()">
@@ -224,7 +198,7 @@
             if (typeof showHistory === 'function') showHistory();
             break;
           case 'showProducts':
-            if (typeof showProductEditor === 'function') showProductEditor();
+            // Products are managed via Google Sheets
             break;
           case 'configureSheets':
             if (typeof openConfigSheets === 'function') openConfigSheets();

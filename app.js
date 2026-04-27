@@ -96,36 +96,7 @@ const SHEETS = {
     }
   },
 
-  saveProducts(products) {
-    try {
-      localStorage.setItem('umamiProducts', JSON.stringify(products));
-      // Sync to Google Sheets
-      this.syncProductsToSheets(products);
-    } catch (e) {
-      console.error('[SHEETS] Failed to save products:', e);
-    }
-  },
-
-  // Sync products to Google Sheets
-  async syncProductsToSheets(products) {
-    const webAppUrl = this.getWebAppUrl();
-    if (!webAppUrl) return;
-
-    try {
-      await fetch(webAppUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'syncProducts',
-          products: products
-        })
-      });
-      console.log('[SHEETS] Products synced to Google Sheets');
-    } catch (error) {
-      console.error('[SHEETS] Products sync failed:', error);
-    }
-  },
+  // Products are read-only from Google Sheets, no save function
 
   // Load products from Google Sheets
   async loadProductsFromSheets() {
@@ -796,111 +767,7 @@ async function exportTodayOrders() {
   XLSX.writeFile(wb, `umami-orders-${date}.xlsx`);
 }
 
-// ==================== PRODUCT EDITOR ====================
-const EDITOR_PASSWORD = '090909';
-const MAX_PRODUCTS = 15;
-let isProductEditorOpen = false;
-
-async function showProductEditor() {
-  // Simple password check
-  const password = prompt('Enter password to edit products:');
-  if (password !== EDITOR_PASSWORD) {
-    if (password !== null) {
-      alert('Incorrect password');
-    }
-    return;
-  }
-
-  const modal = document.getElementById('productEditorModal');
-  const list = document.getElementById('productEditList');
-  
-  const products = SHEETS.getProducts();
-  
-  list.innerHTML = products.map(p => `
-    <div class="product-edit-item" data-id="${p.id}">
-      <input type="text" value="${p.name}" onchange="updateProductField('${p.id}', 'name', this.value)" placeholder="Name">
-      <input type="number" value="${p.price}" step="0.1" onchange="updateProductField('${p.id}', 'price', parseFloat(this.value))" placeholder="Price">
-      <select onchange="updateProductField('${p.id}', 'category', this.value)">
-        <option value="sushi" ${p.category === 'sushi' ? 'selected' : ''}>🍣 Sushi</option>
-        <option value="drink" ${p.category === 'drink' ? 'selected' : ''}>🥤 Drink</option>
-        <option value="addon" ${p.category === 'addon' ? 'selected' : ''}>➕ Addon</option>
-        <option value="discount" ${p.category === 'discount' ? 'selected' : ''}>💰 Discount</option>
-      </select>
-      <div class="product-edit-actions">
-        <button class="delete" onclick="deleteProduct('${p.id}')">🗑️</button>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('productCount').textContent = `${products.length} / ${MAX_PRODUCTS} products`;
-  
-  // Hide add button if at max
-  document.getElementById('addNewProductBtn').style.display = 
-    products.length >= MAX_PRODUCTS ? 'none' : 'inline-block';
-
-  modal.classList.add('show');
-  activeModal = 'productEditorModal';
-  isProductEditorOpen = true;
-}
-
-function closeProductEditor() {
-  document.getElementById('productEditorModal').classList.remove('show');
-  if (activeModal === 'productEditorModal') activeModal = null;
-  isProductEditorOpen = false;
-}
-
-function updateProductField(productId, field, value) {
-  const products = SHEETS.getProducts();
-  const product = products.find(p => p.id === productId);
-  if (product) {
-    product[field] = value;
-    SHEETS.saveProducts(products);
-  }
-}
-
-async function deleteProduct(productId) {
-  if (!confirm('Delete this product?')) return;
-  
-  let products = SHEETS.getProducts();
-  products = products.filter(p => p.id !== productId);
-  SHEETS.saveProducts(products);
-  
-  showProductEditor(); // Refresh
-  renderProducts();
-}
-
-async function addNewProduct() {
-  const products = SHEETS.getProducts();
-  
-  if (products.length >= MAX_PRODUCTS) {
-    alert(`Maximum ${MAX_PRODUCTS} products allowed`);
-    return;
-  }
-
-  const newProduct = {
-    id: SHEETS.generateUUID(),
-    name: 'New Product',
-    price: 0,
-    taxPercent: 13.5,
-    category: 'sushi',
-    sortOrder: products.length + 1,
-    isActive: true
-  };
-
-  products.push(newProduct);
-  SHEETS.saveProducts(products);
-  
-  showProductEditor(); // Refresh
-  renderProducts();
-}
-
-async function resetAllProducts() {
-  if (!confirm('Reset all products to defaults?')) return;
-  
-  SHEETS.saveProducts(SHEETS.getDefaultProducts());
-  showProductEditor(); // Refresh
-  renderProducts();
-}
+// Product editor removed - products are managed via Google Sheets only
 
 function closeAllModals() {
   if (activeModal) {
@@ -1094,12 +961,6 @@ window.newOrder = newOrder;
 window.downloadReceiptImage = downloadReceiptImage;
 window.printReceipt = printReceipt;
 window.shareReceipt = shareReceipt;
-window.showProductEditor = showProductEditor;
-window.closeProductEditor = closeProductEditor;
-window.updateProductField = updateProductField;
-window.deleteProduct = deleteProduct;
-window.addNewProduct = addNewProduct;
-window.resetAllProducts = resetAllProducts;
 window.configureGoogleSheets = configureGoogleSheets;
 window.openConfigSheets = openConfigSheets;
 window.closeConfigSheets = closeConfigSheets;
