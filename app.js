@@ -371,12 +371,13 @@ function renderProducts() {
 
 // Add product to order
 function addToOrder(productId) {
-  console.log('[ORDER] Adding product:', productId);
+  console.log('[ORDER] Adding product:', productId, 'type:', typeof productId);
   const products = SHEETS.getProducts();
-  console.log('[ORDER] Available products:', products);
-  const product = products.find(p => p.id === productId);
+  // Convert to string for comparison since IDs may be numbers or strings
+  const productIdStr = String(productId);
+  const product = products.find(p => String(p.id) === productIdStr);
   if (!product) {
-    console.error('[ORDER] Product not found:', productId);
+    console.error('[ORDER] Product not found:', productId, 'in', products.map(p => p.id));
     return;
   }
   console.log('[ORDER] Found product:', product);
