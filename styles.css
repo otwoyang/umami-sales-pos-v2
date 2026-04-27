@@ -164,6 +164,7 @@ body {
   background: var(--bg-secondary);
   height: 100%;
   max-height: 100%;
+  position: relative;
 }
 
 /* ==================== ORDER HEADER ==================== */
@@ -310,6 +311,51 @@ body {
   font-size: 8vmin;
   margin-bottom: var(--space-md);
   opacity: 0.5;
+}
+
+/* ==================== SYNCING OVERLAY ==================== */
+.syncing-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(248, 250, 252, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: var(--radius-lg);
+}
+
+.syncing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.syncing-spinner {
+  font-size: 6vmin;
+  animation: spin 1.5s linear infinite;
+  color: var(--accent-blue);
+}
+
+.syncing-text {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.syncing-subtext {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ==================== ORDER SUMMARY ==================== */

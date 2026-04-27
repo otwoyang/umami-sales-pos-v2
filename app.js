@@ -568,32 +568,50 @@ function setPromiseTime() {
 async function completeOrder(paymentMethod) {
   if (currentOrder.items.length === 0) return;
 
+  // Show syncing overlay
+  const syncingOverlay = document.getElementById('syncingOverlay');
+  if (syncingOverlay) syncingOverlay.style.display = 'flex';
+
+  // Disable payment buttons during sync
+  document.querySelectorAll('.pay-btn').forEach(btn => btn.disabled = true);
+
   // Notify kitchen to show pending placeholder
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({ action: 'orderSubmitting' }, '*');
   }
 
-  const order = await SHEETS.addOrder({
-    items: [...currentOrder.items],
-    subtotal: currentOrder.subtotal,
-    vat: currentOrder.vat,
-    total: currentOrder.total,
-    paymentMethod,
-    promiseTime: promiseTimeMinutes
-  });
+  try {
+    const order = await SHEETS.addOrder({
+      items: [...currentOrder.items],
+      subtotal: currentOrder.subtotal,
+      vat: currentOrder.vat,
+      total: currentOrder.total,
+      paymentMethod,
+      promiseTime: promiseTimeMinutes
+    });
 
-  console.log('[ORDER] Order completed:', order.orderNumber);
+    console.log('[ORDER] Order completed:', order.orderNumber);
 
-  // Show receipt
-  showReceipt(order);
+    // Hide syncing overlay
+    if (syncingOverlay) syncingOverlay.style.display = 'none';
 
-  // Clear order
-  clearOrder();
-  await updateTodaySales();
+    // Show receipt
+    showReceipt(order);
 
-  // Notify kitchen order is ready
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ action: 'orderSubmitted' }, '*');
+    // Clear order
+    clearOrder();
+    await updateTodaySales();
+
+    // Notify kitchen order is ready
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ action: 'orderSubmitted' }, '*');
+    }
+  } catch (error) {
+    console.error('[ORDER] Failed to complete order:', error);
+    if (syncingOverlay) syncingOverlay.style.display = 'none';
+    showError('Failed to process order');
+    // Re-enable payment buttons on error
+    updateOrderDisplay();
   }
 }
 
