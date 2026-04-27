@@ -1631,6 +1631,24 @@ body {
   }
 }
 
+/* ==================== TOUCH DEVICES (iPad) ==================== */
+@media (hover: none) and (pointer: coarse) {
+  .order-summary {
+    padding-bottom: var(--space-xs);
+  }
+
+  .today-sales {
+    bottom: calc(var(--space-xs) + 60px);
+    right: var(--space-xs);
+    padding: var(--space-xs) var(--space-sm);
+    min-width: auto;
+  }
+
+  .today-sales-amount {
+    font-size: var(--font-size-lg);
+  }
+}
+
 /* ==================== SPLIT VIEW ==================== */
 .split-view-container {
   position: fixed;
