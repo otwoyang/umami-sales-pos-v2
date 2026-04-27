@@ -159,8 +159,38 @@ const SHEETS = {
     return order;
   },
 
-  // Get today's orders
-  getTodayOrders() {
+  // Get today's orders (from Google Sheets API)
+  async getTodayOrders() {
+    const webAppUrl = this.getWebAppUrl();
+    if (!webAppUrl) {
+      console.log('[SHEETS] No Web App URL, falling back to localStorage');
+      const orders = this.getOrders();
+      const today = new Date().toDateString();
+      return orders.filter(order => {
+        const orderDate = new Date(order.createdAt).toDateString();
+        return orderDate === today;
+      });
+    }
+
+    try {
+      const baseUrl = webAppUrl.replace(/\/exec$/, '');
+      const today = new Date().toISOString().split('T')[0];
+      const url = baseUrl + '/exec?action=getOrders&date=' + today;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success && data.orders) {
+        // Convert string dates back to timestamps for compatibility
+        return data.orders.map(order => ({
+          ...order,
+          createdAt: new Date(order.createdAt).getTime(),
+          completedAt: order.completedAt ? new Date(order.completedAt).getTime() : null
+        }));
+      }
+    } catch (error) {
+      console.error('[SHEETS] Failed to get today orders:', error);
+    }
+    
+    // Fallback to localStorage
     const orders = this.getOrders();
     const today = new Date().toDateString();
     return orders.filter(order => {
@@ -336,7 +366,7 @@ async function initOrderPage() {
 
 // Calculate ETA based on orders
 async function updateETA() {
-  const orders = SHEETS.getTodayOrders();
+  const orders = await SHEETS.getTodayOrders();
   const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'cooking');
   
   let eta = 15; // Default
@@ -712,7 +742,7 @@ async function showHistory() {
   const modal = document.getElementById('historyModal');
   const list = document.getElementById('historyList');
   
-  const orders = SHEETS.getTodayOrders();
+  const orders = await SHEETS.getTodayOrders();
   orders.sort((a, b) => b.createdAt - a.createdAt);
 
   if (orders.length === 0) {
@@ -764,7 +794,7 @@ async function deleteHistoryOrder(orderId) {
 
 // Export to Excel
 async function exportTodayOrders() {
-  const orders = SHEETS.getTodayOrders();
+  const orders = await SHEETS.getTodayOrders();
   
   if (orders.length === 0) {
     alert('No orders to export');
